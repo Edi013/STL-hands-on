@@ -5,14 +5,30 @@
 
 using namespace std;
 
+struct Case {
+    string name, speciality;
+};
+
+struct Doctor {
+    string name, speciality;
+};
+
+struct Result {
+    string name, speciality;
+};
+
+bool matchSpeciality(const Doctor& doctor, const Case& currentCase) {
+    return doctor.speciality == currentCase.speciality;
+}
+
 int main()
 {
     ifstream inFile("HandsOn-Input.txt");
 
     int no_problems, no_doctors;
-    vector<pair<string, string>> cases;
-    vector<pair<string, string>> doctors;
-    vector<pair<string, string>> result;
+    vector<Case> cases;
+    vector<Doctor> doctors;
+    vector<Result> result;
     string name, speciality;
     
     inFile >> no_problems;
@@ -37,23 +53,28 @@ int main()
         cout << name << ' ' << speciality << '\n';
     }
 
-    for (int i = 0; i < no_problems; i++) {
-        auto problem = cases[i];
-
-        for (int j = 0; j < doctors.size(); j++) {
-            if (doctors[j].second == problem.second) {
-                result.emplace_back(doctors[j].first, problem.first);
-                doctors.erase(doctors.begin()+j );
-                break;
-            }
-        }
+    for (int i = 0; i < cases.size(); i++) {
+        auto currentCase = cases[i];
+        auto doctorIterator = find_if(doctors.begin(), doctors.end(), [currentCase](const Doctor& dr) {
+            return matchSpeciality(dr, currentCase);
+        });
+        Doctor doctor = *doctorIterator;
+        result.push_back(Result{ doctor.name, currentCase.name});
+        doctors.erase(doctorIterator);
     }
 
-    for (int i = 0; i < result.size(); i++)
-    {
-        cout << result[i].first<< ' ' << result[i].second << '\n';
-    }
+    for (auto currentResult : result)
+        cout << currentResult.name<< ' ' << currentResult.speciality << '\n';
 
     return 0;
 }
 
+
+
+//for (int j = 0; j < doctors.size(); j++) {
+//    if (doctors[j].second == problem.second) {
+//        result.emplace_back(doctors[j].first, problem.first);
+//        doctors.erase(doctors.begin() + j);
+//        break;
+//    }
+//}
