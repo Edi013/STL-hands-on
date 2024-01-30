@@ -2,24 +2,32 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <queue>
+#include <algorithm>
 
 using namespace std;
 
 struct Case {
     string name, speciality;
+    int priority, duration;
+    bool reviewd = false;
 };
 
 struct Doctor {
     string name, speciality;
-    bool inUse = false;
+    std::queue<Case> queue;
+    int remainingTime = 8;
 };
 
-struct Result {
-    string name, speciality;
-};
-
-bool matchSpeciality(const Doctor& doctor, const Case& currentCase) {
-    return doctor.speciality == currentCase.speciality && doctor.inUse == false;
+void matchSpeciality(Case& currentCase, vector<Doctor>& doctors) {
+    for_each(doctors.begin(), doctors.end(), [&currentCase](auto& currentDoctor){
+        if (currentDoctor.speciality == currentCase.speciality && currentDoctor.remainingTime - currentCase.duration >= 0 &&
+            currentCase.reviewd == false) {
+            currentDoctor.queue.push(currentCase);
+            currentDoctor.remainingTime -= currentCase.duration;
+            currentCase.reviewd = true;
+        }
+    });
 }
 
 int main()
@@ -29,8 +37,8 @@ int main()
     int no_problems, no_doctors;
     vector<Case> cases;
     vector<Doctor> doctors;
-    vector<Result> result;
     string name, speciality;
+    int priority, duration;
     
     inFile >> no_problems;
 
@@ -38,11 +46,14 @@ int main()
     {
         inFile >> name;
         inFile >> speciality;
+        inFile >> duration;
+        inFile >> priority;
 
-        cases.emplace_back(name, speciality);
-        cout << name << ' ' << speciality << '\n';
+        cases.emplace_back(name, speciality, priority, duration);
+        cout << name << ' ' << speciality << ' ' << priority << ' ' << duration << '\n';
     }
 
+    cout << endl;
     inFile >> no_doctors;
 
     for (int i = 0; i < no_doctors; i++)
@@ -54,20 +65,30 @@ int main()
         cout << name << ' ' << speciality << '\n';
     }
 
-    for (int i = 0; i < cases.size(); i++) {
-        auto currentCase = cases[i];
-        auto doctorIterator = find_if(doctors.begin(), doctors.end(), [currentCase](const Doctor& dr) {
-            return matchSpeciality(dr, currentCase);
-        });
-        if (doctorIterator != doctors.end()) {
-            (*doctorIterator).inUse = true;
-            Doctor doctor = *doctorIterator;
-            result.push_back(Result{ doctor.name, currentCase.name });
-        }
-    }
+    sort(cases.begin(), cases.end(), [](const Case& c1, const Case& c2) {
+        return c1.priority > c2.priority;
+    });
 
-    for (auto currentResult : result)
-        cout << currentResult.name<< ' ' << currentResult.speciality << '\n';
+    cout << "After input -------------------" << endl;
+
+    std::for_each(cases.begin(), cases.end(), [&doctors](Case& currentCase) {
+        matchSpeciality(currentCase, doctors);
+    });
+    
+    // display
+    for_each(doctors.begin(), doctors.end(), [](auto& currentDoctor) {
+        if (!currentDoctor.queue.empty()) {
+            cout << currentDoctor.name << " " << currentDoctor.queue.size() << " ";
+            while (!currentDoctor.queue.empty()) {
+                auto currentCase = currentDoctor.queue.front();
+                currentDoctor.queue.pop();
+                cout << currentCase.name << " ";
+            }
+            cout << endl;
+        };
+    });
+
+        
 
     return 0;
 }
