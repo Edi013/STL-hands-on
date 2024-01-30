@@ -11,6 +11,7 @@ struct Case {
 
 struct Doctor {
     string name, speciality;
+    bool inUse = false;
 };
 
 struct Result {
@@ -18,7 +19,7 @@ struct Result {
 };
 
 bool matchSpeciality(const Doctor& doctor, const Case& currentCase) {
-    return doctor.speciality == currentCase.speciality;
+    return doctor.speciality == currentCase.speciality && doctor.inUse == false;
 }
 
 int main()
@@ -58,9 +59,11 @@ int main()
         auto doctorIterator = find_if(doctors.begin(), doctors.end(), [currentCase](const Doctor& dr) {
             return matchSpeciality(dr, currentCase);
         });
-        Doctor doctor = *doctorIterator;
-        result.push_back(Result{ doctor.name, currentCase.name});
-        doctors.erase(doctorIterator);
+        if (doctorIterator != doctors.end()) {
+            (*doctorIterator).inUse = true;
+            Doctor doctor = *doctorIterator;
+            result.push_back(Result{ doctor.name, currentCase.name });
+        }
     }
 
     for (auto currentResult : result)
@@ -68,13 +71,3 @@ int main()
 
     return 0;
 }
-
-
-
-//for (int j = 0; j < doctors.size(); j++) {
-//    if (doctors[j].second == problem.second) {
-//        result.emplace_back(doctors[j].first, problem.first);
-//        doctors.erase(doctors.begin() + j);
-//        break;
-//    }
-//}
