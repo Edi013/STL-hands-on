@@ -12,56 +12,26 @@ using namespace std;
 struct Case {
     string name, speciality;
     int arrival_time, priority, duration;
-    bool reviewd = false;
 };
 
 struct Doctor {
     string name;
     set<string> specialities;
-    queue<Case> queue;
+    vector<Case> handeledCases;
     int remainingTime = 8;
 };
-
-struct Staff {
-    // specialitati - doctori
-    map<string, vector<Doctor>> doctorsBySpecialities;
-};
-
-void matchSpeciality(Case& currentCase, vector<Doctor>& doctors, Staff staff) {
-    /*for_each(doctors.begin(), doctors.end(), [&currentCase](auto& currentDoctor){
-        if (currentDoctor.specialities.contains(currentCase.speciality) &&
-            currentDoctor.remainingTime - currentCase.duration >= 0 &&
-            currentCase.reviewd == false) 
-        {
-            currentDoctor.queue.push(currentCase);
-            currentDoctor.remainingTime -= currentCase.duration;
-            currentCase.reviewd = true;
-        }
-    });*/
-    
-    for (auto doctor : staff.doctorsBySpecialities[currentCase.speciality]) {
-        if (doctor.remainingTime - currentCase.duration >= 0 &&
-            currentCase.reviewd == false)
-        {
-            doctor.queue.push(currentCase);
-            doctor.remainingTime -= currentCase.duration;
-            currentCase.reviewd = true;
-        }
-    }
-
-}
 
 int main()
 {
     ifstream inFile("HandsOn-Input.txt");
 
     int no_problems, no_doctors;
-    vector<Case> cases;
-    vector<Doctor> doctors;
-    Staff staff;
     string name, speciality;
-    set<string> specialities;
     int priority, duration, arrival_time, no_specialities;
+
+    vector<Case> cases;
+    map<string, Doctor> doctors;
+    map<string, vector<string>> doctorsBySpecialities;
     
     inFile >> no_problems;
 
@@ -73,7 +43,7 @@ int main()
         inFile >> duration;
         inFile >> priority;
 
-        cases.emplace_back(name, speciality, priority, duration);
+        cases.emplace_back(Case(name, speciality, arrival_time, priority, duration));
         cout << name << ' ' << speciality << ' ' << arrival_time << ' ' << priority << ' ' << duration << '\n';
     }
 
@@ -82,47 +52,68 @@ int main()
 
     for (int i = 0; i < no_doctors; i++)
     {
-        auto current_doctor = Doctor();
+        Doctor current_doctor = Doctor();
         inFile >> name;
         inFile >> no_specialities;
-        cout << name << ' ' << no_specialities << ' ';
-        
         current_doctor.name = name;
+        cout << name << ' ' << no_specialities << ' ';
+
         for (int i = 0; i < no_specialities; i++) {
             inFile >> speciality;
-            current_doctor.specialities.insert(speciality);
-            specialities.insert(speciality);
-            staff.doctorsBySpecialities[speciality].emplace_back(current_doctor);
             cout << speciality << '\n';
-        }
+            
+            current_doctor.specialities.insert(speciality);
+            doctorsBySpecialities[speciality].emplace_back(current_doctor.name);
 
-        doctors.emplace_back(current_doctor);
+        }
+        doctors.insert({ current_doctor.name, current_doctor });
     }
 
     sort(cases.begin(), cases.end(), [](const Case& c1, const Case& c2) {
+        if (c1.arrival_time < c2.arrival_time) 
+            return true;
+        if (c1.arrival_time > c2.arrival_time)
+            return false;
+        
         return c1.priority > c2.priority;
     });
 
-    cout << "After input -------------------" << endl;
+    for (Case& currentCase : cases) {
 
-    std::for_each(cases.begin(), cases.end(), [&doctors](Case& currentCase) {
-        matchSpeciality(currentCase, doctors);
-    });
-    
-    // display
-    for_each(doctors.begin(), doctors.end(), [](auto& currentDoctor) {
-        if (!currentDoctor.queue.empty()) {
-            cout << currentDoctor.name << " " << currentDoctor.queue.size() << " ";
-            while (!currentDoctor.queue.empty()) {
-                auto currentCase = currentDoctor.queue.front();
-                currentDoctor.queue.pop();
-                cout << currentCase.name << " ";
+        // find the first [free] doctor, if there is any
+        // use the map containing doctors by speciality to find a specialist
+            // use the map containg the doctors to quickly acces the doctor
+        for (string& currentDoctorId : doctorsBySpecialities[currentCase.speciality]) {
+            Doctor& currentDoctor = doctors[currentDoctorId];
+            // Verificam la ce ora s-a terminat cazul anterior, daca exista.
+            if (currentDoctor.handeledCases.size() > 0) {
+                if (currentDoctor.handeledCases[currentDoctor.handeledCases.size() - 1].arrival_time +
+                    currentDoctor.handeledCases[currentDoctor.handeledCases.size() - 1].duration
+                        > currentCase.arrival_time) {
+                    continue;
+                }
             }
-            cout << endl;
-        };
-    });
 
-        
+            if (currentDoctor.remainingTime - currentCase.duration >= 0) {
+                currentDoctor.remainingTime -= currentCase.duration;
+                currentDoctor.handeledCases.push_back(currentCase);
+                break;
+            }
+        }
+    }
+
+    // display
+    for (auto& currentDoctor : doctors) {
+        if (currentDoctor.second.handeledCases.size() == 0)
+            continue;
+
+        cout << currentDoctor.second.name << " " << currentDoctor.second.handeledCases.size() ;
+        for (Case currentCase : currentDoctor.second.handeledCases) {
+            cout << " " << currentCase.name << " " << currentCase.arrival_time;
+        }
+        cout << endl;
+    }
+   
 
     return 0;
 }
