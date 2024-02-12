@@ -4,20 +4,61 @@
 #include <vector>
 #include <queue>
 #include <algorithm>
+#include <unordered_set>
 #include <set>
-#include <map>
+#include <unordered_map>
 
 using namespace std;
 
 struct Case {
     string name, speciality;
     int arrival_time, priority, duration;
+
+    Case(const std::string& name, const std::string& speciality,
+        int arrival_time, int priority, int duration)
+        : name(name), speciality(speciality),
+        arrival_time(arrival_time), priority(priority),
+        duration(duration) {}
+
+    Case(const Case& other)
+        : name(other.name), speciality(other.speciality),
+        arrival_time(other.arrival_time), priority(other.priority),
+        duration(other.duration) {}
+
+    bool operator<(const Case& other) const {
+        if (arrival_time < other.arrival_time)
+            return true;
+        if (arrival_time > other.arrival_time)
+            return false;
+        return priority > other.priority;
+    }
+
+    bool operator==(const Case& other) const {
+        return name == other.name &&
+            speciality == other.speciality &&
+            arrival_time == other.arrival_time &&
+            priority == other.priority &&
+            duration == other.duration;
+    }
 };
+
+namespace std {
+    template<> struct hash<Case> {
+        size_t operator()(const Case& c) const {
+            // Combine hashes of member variables using XOR
+            return hash<std::string>()(c.name) ^
+                hash<std::string>()(c.speciality) ^
+                hash<int>()(c.arrival_time) ^
+                (hash<int>()(c.priority) << 2) ^
+                (hash<int>()(c.duration) << 1);
+        }
+    };
+}
 
 struct Doctor {
     string name;
-    set<string> specialities;
-    vector<Case> handeledCases;
+    unordered_set<string> specialities;
+    set<Case> handeledCases;
     int remainingTime = 8;
 };
 
@@ -29,9 +70,9 @@ int main()
     string name, speciality;
     int priority, duration, arrival_time, no_specialities;
 
-    vector<Case> cases;
-    map<string, Doctor> doctors;
-    map<string, vector<string>> doctorsBySpecialities;
+    set<Case> cases;
+    unordered_map<string, Doctor> doctors;
+    unordered_map<string, vector<string>> doctorsBySpecialities;
     
     inFile >> no_problems;
 
@@ -43,7 +84,7 @@ int main()
         inFile >> duration;
         inFile >> priority;
 
-        cases.emplace_back(Case(name, speciality, arrival_time, priority, duration));
+        cases.insert(Case(name, speciality, arrival_time, priority, duration));
         cout << name << ' ' << speciality << ' ' << arrival_time << ' ' << priority << ' ' << duration << '\n';
     }
 
@@ -69,34 +110,22 @@ int main()
         doctors.insert({ current_doctor.name, current_doctor });
     }
 
-    sort(cases.begin(), cases.end(), [](const Case& c1, const Case& c2) {
-        if (c1.arrival_time < c2.arrival_time) 
-            return true;
-        if (c1.arrival_time > c2.arrival_time)
-            return false;
-        
-        return c1.priority > c2.priority;
-    });
+    cout << "After output -----------------------" << endl;
 
-    for (Case& currentCase : cases) {
+    for (const Case& currentCase : cases) {
 
-        // find the first [free] doctor, if there is any
-        // use the map containing doctors by speciality to find a specialist
-            // use the map containg the doctors to quickly acces the doctor
         for (string& currentDoctorId : doctorsBySpecialities[currentCase.speciality]) {
             Doctor& currentDoctor = doctors[currentDoctorId];
-            // Verificam la ce ora s-a terminat cazul anterior, daca exista.
             if (currentDoctor.handeledCases.size() > 0) {
-                if (currentDoctor.handeledCases[currentDoctor.handeledCases.size() - 1].arrival_time +
-                    currentDoctor.handeledCases[currentDoctor.handeledCases.size() - 1].duration
-                        > currentCase.arrival_time) {
+                auto lastElementIterator = currentDoctor.handeledCases.rbegin();
+                if ((lastElementIterator->arrival_time + lastElementIterator->duration) > currentCase.arrival_time) {
                     continue;
                 }
             }
 
             if (currentDoctor.remainingTime - currentCase.duration >= 0) {
                 currentDoctor.remainingTime -= currentCase.duration;
-                currentDoctor.handeledCases.push_back(currentCase);
+                currentDoctor.handeledCases.insert(currentCase);
                 break;
             }
         }
