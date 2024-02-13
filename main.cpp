@@ -45,7 +45,6 @@ struct Case {
 namespace std {
     template<> struct hash<Case> {
         size_t operator()(const Case& c) const {
-            // Combine hashes of member variables using XOR
             return hash<std::string>()(c.name) ^
                 hash<std::string>()(c.speciality) ^
                 hash<int>()(c.arrival_time) ^
@@ -62,53 +61,82 @@ struct Doctor {
     int remainingTime = 8;
 };
 
+class FileReader
+{
+private:
+    ifstream inFile;
+
+    void ReadCasesFromFile(set<Case>& cases, string fileName) {
+        int no_problems, no_doctors;
+        string name, speciality;
+        int priority, duration, arrival_time, no_specialities;
+
+        inFile >> no_problems;
+
+        for (int i = 0; i < no_problems; i++)
+        {
+            inFile >> name;
+            inFile >> speciality;
+            inFile >> arrival_time;
+            inFile >> duration;
+            inFile >> priority;
+
+            cases.insert(Case(name, speciality, arrival_time, priority, duration));
+            cout << name << ' ' << speciality << ' ' << arrival_time << ' ' << priority << ' ' << duration << '\n';
+        }
+        cout << endl;
+    }
+    
+    void ReadDoctorsFromFile(
+        unordered_map<string, Doctor>& doctors, unordered_map<string, vector<string>>& doctorsBySpecialities) {
+        string name, speciality;
+        int no_doctors, no_specialities;
+
+        
+
+        inFile >> no_doctors;
+        for (int i = 0; i < no_doctors; i++)
+        {
+            Doctor current_doctor = Doctor();
+            inFile >> name;
+            inFile >> no_specialities;
+            current_doctor.name = name;
+            cout << name << ' ' << no_specialities << ' ';
+
+            for (int i = 0; i < no_specialities; i++) {
+                inFile >> speciality;
+                cout << speciality << '\n';
+
+                current_doctor.specialities.insert(speciality);
+                doctorsBySpecialities[speciality].emplace_back(current_doctor.name);
+
+            }
+            doctors.insert({ current_doctor.name, current_doctor });
+        }
+    }
+
+public: 
+    void ReadFile(string fileName, set<Case>& cases,
+                    unordered_map<string, Doctor>& doctors, unordered_map<string, vector<string>>& doctorsBySpecialities) {
+        inFile = ifstream(fileName);
+
+        ReadCasesFromFile(cases, fileName);
+
+        ReadDoctorsFromFile(doctors, doctorsBySpecialities);
+
+        inFile.close();
+    }
+};
+
 int main()
 {
-    ifstream inFile("HandsOn-Input.txt");
-
-    int no_problems, no_doctors;
-    string name, speciality;
-    int priority, duration, arrival_time, no_specialities;
-
+    string fileName = "HandsOn-Input.txt";
     set<Case> cases;
     unordered_map<string, Doctor> doctors;
     unordered_map<string, vector<string>> doctorsBySpecialities;
     
-    inFile >> no_problems;
-
-    for (int i = 0; i < no_problems; i++)
-    {
-        inFile >> name;
-        inFile >> speciality;
-        inFile >> arrival_time;
-        inFile >> duration;
-        inFile >> priority;
-
-        cases.insert(Case(name, speciality, arrival_time, priority, duration));
-        cout << name << ' ' << speciality << ' ' << arrival_time << ' ' << priority << ' ' << duration << '\n';
-    }
-
-    cout << endl;
-    inFile >> no_doctors;
-
-    for (int i = 0; i < no_doctors; i++)
-    {
-        Doctor current_doctor = Doctor();
-        inFile >> name;
-        inFile >> no_specialities;
-        current_doctor.name = name;
-        cout << name << ' ' << no_specialities << ' ';
-
-        for (int i = 0; i < no_specialities; i++) {
-            inFile >> speciality;
-            cout << speciality << '\n';
-            
-            current_doctor.specialities.insert(speciality);
-            doctorsBySpecialities[speciality].emplace_back(current_doctor.name);
-
-        }
-        doctors.insert({ current_doctor.name, current_doctor });
-    }
+    FileReader file = FileReader();
+    file.ReadFile(fileName, cases, doctors, doctorsBySpecialities);
 
     cout << "After output -----------------------" << endl;
 
