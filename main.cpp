@@ -10,7 +10,9 @@
 
 using namespace std;
 
-struct Case {
+class Case {
+public :
+
     string name, speciality;
     int arrival_time, priority, duration;
 
@@ -54,7 +56,8 @@ namespace std {
     };
 }
 
-struct Doctor {
+class Doctor {
+public : 
     string name;
     unordered_set<string> specialities;
     set<Case> handeledCases;
@@ -128,49 +131,72 @@ public:
     }
 };
 
+class RepartisationAlgorithm {
+public : 
+    void AssignCases(set<Case>& cases, 
+            unordered_map<string, Doctor>& doctors, unordered_map<string, vector<string>>& doctorsBySpecialities) {
+        for (const Case& currentCase : cases) {
+
+            for (string& currentDoctorId : doctorsBySpecialities[currentCase.speciality]) {
+                Doctor& currentDoctor = doctors[currentDoctorId];
+                if (currentDoctor.handeledCases.size() > 0) {
+                    auto lastElementIterator = currentDoctor.handeledCases.rbegin();
+                    if ((lastElementIterator->arrival_time + lastElementIterator->duration) > currentCase.arrival_time) {
+                        continue;
+                    }
+                }
+
+                if (currentDoctor.remainingTime - currentCase.duration >= 0) {
+                    currentDoctor.remainingTime -= currentCase.duration;
+                    currentDoctor.handeledCases.insert(currentCase);
+                    break;
+                }
+            }
+        }
+    }
+};
+
+class UI {
+public: 
+    void Divider() {
+        cout << endl << "--------------------------------------------" << endl << endl;
+    }
+
+    void DisplayDoctors(unordered_map<string, Doctor>& doctors) {
+        for (auto& currentDoctor : doctors) {
+            if (currentDoctor.second.handeledCases.size() == 0)
+                continue;
+
+            cout << currentDoctor.second.name << " " << currentDoctor.second.handeledCases.size();
+            for (Case currentCase : currentDoctor.second.handeledCases) {
+                cout << " " << currentCase.name << " " << currentCase.arrival_time;
+            }
+            cout << endl;
+        }
+    }
+};
+
+
+
+static string FILE_NAME = "HandsOn-Input.txt";
+
 int main()
 {
-    string fileName = "HandsOn-Input.txt";
+    FileReader file = FileReader();
+    UI ui = UI();
+    RepartisationAlgorithm algorithm = RepartisationAlgorithm();
+
     set<Case> cases;
     unordered_map<string, Doctor> doctors;
     unordered_map<string, vector<string>> doctorsBySpecialities;
     
-    FileReader file = FileReader();
-    file.ReadFile(fileName, cases, doctors, doctorsBySpecialities);
+    file.ReadFile(FILE_NAME, cases, doctors, doctorsBySpecialities);
 
-    cout << "After output -----------------------" << endl;
+    ui.Divider();
 
-    for (const Case& currentCase : cases) {
+    algorithm.AssignCases(cases, doctors, doctorsBySpecialities);
 
-        for (string& currentDoctorId : doctorsBySpecialities[currentCase.speciality]) {
-            Doctor& currentDoctor = doctors[currentDoctorId];
-            if (currentDoctor.handeledCases.size() > 0) {
-                auto lastElementIterator = currentDoctor.handeledCases.rbegin();
-                if ((lastElementIterator->arrival_time + lastElementIterator->duration) > currentCase.arrival_time) {
-                    continue;
-                }
-            }
-
-            if (currentDoctor.remainingTime - currentCase.duration >= 0) {
-                currentDoctor.remainingTime -= currentCase.duration;
-                currentDoctor.handeledCases.insert(currentCase);
-                break;
-            }
-        }
-    }
-
-    // display
-    for (auto& currentDoctor : doctors) {
-        if (currentDoctor.second.handeledCases.size() == 0)
-            continue;
-
-        cout << currentDoctor.second.name << " " << currentDoctor.second.handeledCases.size() ;
-        for (Case currentCase : currentDoctor.second.handeledCases) {
-            cout << " " << currentCase.name << " " << currentCase.arrival_time;
-        }
-        cout << endl;
-    }
-   
+    ui.DisplayDoctors(doctors);
 
     return 0;
 }
