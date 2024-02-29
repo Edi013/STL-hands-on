@@ -17,7 +17,7 @@ public:
     int totalQuantity;
     priority_queue <pair<int, float>, vector<pair<int, float>>, greater<pair<int, float>>> quantityByExpirationDate;
 
-    float GetAvailableQuantityByDate(Product currentProduct, const int* offerDate, float quantityNeededForOne) {
+    float GetAvailableQuantityByDate(Product currentProduct, const int* offerDate) {
         while (!currentProduct.quantityByExpirationDate.empty()) {
             if (currentProduct.quantityByExpirationDate.top().first <= *offerDate) {
                 currentProduct.totalQuantity -= currentProduct.quantityByExpirationDate.top().second;
@@ -47,7 +47,7 @@ class ComposedProduct {
     float QuantitySum(
         unordered_map<string, ComposedProduct>& composedProductsByName, unordered_map<string, Product>& productsByName, const pair<string, float> component,const int* offerDate ) {
         if (productsByName.contains(component.first)){
-            return productsByName[component.first].GetAvailableQuantityByDate(productsByName[component.first], offerDate, component.second);
+            return productsByName[component.first].GetAvailableQuantityByDate(productsByName[component.first], offerDate);
         }
 
         int sum = 0;
@@ -77,7 +77,7 @@ public:
                 availableQuantityForProduct = composedProductsByName[neededProduct.first].GetAvailableQuantityByDate(neededProduct.first, composedProductsByName, productsByName, &offerDate);
             }
             else {
-                availableQuantityForProduct = productsByName[neededProduct.first].GetAvailableQuantityByDate(productsByName[neededProduct.first], &offerDate, neededProduct.second); 
+                availableQuantityForProduct = productsByName[neededProduct.first].GetAvailableQuantityByDate(productsByName[neededProduct.first], &offerDate); 
             }
 
             // pastram cantitatea cea mai mica permisa de unul dintre ingrediente
@@ -427,7 +427,7 @@ int main()
     */
 
     //Solutions::A(productsByName, offers);
-    Solutions::B(productsByName, offers, composedProductsByName);
+    //Solutions::B(productsByName, offers, composedProductsByName);
 
     return 0;
 }
