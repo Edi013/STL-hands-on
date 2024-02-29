@@ -325,7 +325,6 @@ static string FILE_NAME = "Input.txt";
 int main()
 {
     ifstream inFile(FILE_NAME);
-    Solutions solutions = Solutions();
 
     unordered_map<string, Product> productsByName;
 
@@ -390,8 +389,9 @@ int main()
         composedProductsByName[currentProduct.productName] = currentProduct;
     }
 
-    //solutions.A(productsByName, offers);
-    solutions.B(productsByName, offers, composedProductsByName);
+    Solutions solutions = Solutions();
+    solutions.A(productsByName, offers);
+    //solutions.B(productsByName, offers, composedProductsByName);
 
     return 0;
 }
