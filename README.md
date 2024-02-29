@@ -1,5 +1,5 @@
-# It ended up very well - 2024.02.28-29 : 
-![STL_Contest Netrom  ](https://github.com/Edi013/STL-hands-on/assets/87914375/3b401245-898b-4122-ab1c-ca2aa769971c)
+# Happy ending -> 2024.02.28-29 
+![Netrom STL Course Ending](https://github.com/Edi013/STL-hands-on/assets/87914375/cb24eb94-5ae6-45a4-9556-2eecd3670fd1)
 
 # STL-hands-on
 STL Hands-On boilerplate project
