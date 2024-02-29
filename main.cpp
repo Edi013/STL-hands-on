@@ -10,193 +10,424 @@
 
 using namespace std;
 
-class Case {
-public :
+class Product {
+public:
+    string productName;
+    float productionPrice;
+    int totalQuantity;
+    priority_queue <pair<int, float>, vector<pair<int, float>>, greater<pair<int, float>>> quantityByExpirationDate;
 
-    string name, speciality;
-    int arrival_time, priority, duration;
-
-    Case(const std::string& name, const std::string& speciality,
-        int arrival_time, int priority, int duration)
-        : name(name), speciality(speciality),
-        arrival_time(arrival_time), priority(priority),
-        duration(duration) {}
-
-    Case(const Case& other)
-        : name(other.name), speciality(other.speciality),
-        arrival_time(other.arrival_time), priority(other.priority),
-        duration(other.duration) {}
-
-    bool operator<(const Case& other) const {
-        if (arrival_time < other.arrival_time)
-            return true;
-        if (arrival_time > other.arrival_time)
-            return false;
-        return priority > other.priority;
-    }
-
-    bool operator==(const Case& other) const {
-        return name == other.name &&
-            speciality == other.speciality &&
-            arrival_time == other.arrival_time &&
-            priority == other.priority &&
-            duration == other.duration;
-    }
-};
-
-namespace std {
-    template<> struct hash<Case> {
-        size_t operator()(const Case& c) const {
-            return hash<std::string>()(c.name) ^
-                hash<std::string>()(c.speciality) ^
-                hash<int>()(c.arrival_time) ^
-                (hash<int>()(c.priority) << 2) ^
-                (hash<int>()(c.duration) << 1);
-        }
-    };
-}
-
-class Doctor {
-public : 
-    string name;
-    unordered_set<string> specialities;
-    set<Case> handeledCases;
-    int remainingTime = 8;
-};
-
-class FileReader
-{
-private:
-    ifstream inFile;
-
-    void ReadCasesFromFile(set<Case>& cases, string fileName) {
-        int no_problems, no_doctors;
-        string name, speciality;
-        int priority, duration, arrival_time, no_specialities;
-
-        inFile >> no_problems;
-
-        for (int i = 0; i < no_problems; i++)
-        {
-            inFile >> name;
-            inFile >> speciality;
-            inFile >> arrival_time;
-            inFile >> duration;
-            inFile >> priority;
-
-            cases.insert(Case(name, speciality, arrival_time, priority, duration));
-            cout << name << ' ' << speciality << ' ' << arrival_time << ' ' << priority << ' ' << duration << '\n';
-        }
-        cout << endl;
-    }
-    
-    void ReadDoctorsFromFile(
-        unordered_map<string, Doctor>& doctors, unordered_map<string, vector<string>>& doctorsBySpecialities) {
-        string name, speciality;
-        int no_doctors, no_specialities;
-
-        
-
-        inFile >> no_doctors;
-        for (int i = 0; i < no_doctors; i++)
-        {
-            Doctor current_doctor = Doctor();
-            inFile >> name;
-            inFile >> no_specialities;
-            current_doctor.name = name;
-            cout << name << ' ' << no_specialities << ' ';
-
-            for (int i = 0; i < no_specialities; i++) {
-                inFile >> speciality;
-                cout << speciality << '\n';
-
-                current_doctor.specialities.insert(speciality);
-                doctorsBySpecialities[speciality].emplace_back(current_doctor.name);
-
+    float GetAvailableQuantityByDate(Product currentProduct, const int* offerDate, float quantityNeededForOne) {
+        while (!currentProduct.quantityByExpirationDate.empty()) {
+            if (currentProduct.quantityByExpirationDate.top().first <= *offerDate) {
+                currentProduct.totalQuantity -= currentProduct.quantityByExpirationDate.top().second;
+                currentProduct.quantityByExpirationDate.pop();
+                continue;
             }
-            doctors.insert({ current_doctor.name, current_doctor });
+            break;
         }
-    }
-
-public: 
-    void ReadFile(string fileName, set<Case>& cases,
-                    unordered_map<string, Doctor>& doctors, unordered_map<string, vector<string>>& doctorsBySpecialities) {
-        inFile = ifstream(fileName);
-
-        ReadCasesFromFile(cases, fileName);
-
-        ReadDoctorsFromFile(doctors, doctorsBySpecialities);
-
-        inFile.close();
+        return currentProduct.totalQuantity ;
     }
 };
 
-class RepartisationAlgorithm {
-public : 
-    void AssignCases(set<Case>& cases, 
-            unordered_map<string, Doctor>& doctors, unordered_map<string, vector<string>>& doctorsBySpecialities) {
-        for (const Case& currentCase : cases) {
+class Offer {
+public:
+    int date;
+    string productName;
+    float price, quantity;
+};
 
-            for (string& currentDoctorId : doctorsBySpecialities[currentCase.speciality]) {
-                Doctor& currentDoctor = doctors[currentDoctorId];
-                if (currentDoctor.handeledCases.size() > 0) {
-                    auto lastElementIterator = currentDoctor.handeledCases.rbegin();
-                    if ((lastElementIterator->arrival_time + lastElementIterator->duration) > currentCase.arrival_time) {
-                        continue;
+class OfferSatisfied {
+public:
+    string productName;
+    int quantitySold;
+};
+
+class ComposedProduct {
+    float QuantitySum(
+        unordered_map<string, ComposedProduct>& composedProductsByName, unordered_map<string, Product>& productsByName, const pair<string, float> component,const int* offerDate ) {
+        if (productsByName.contains(component.first)){
+            return productsByName[component.first].GetAvailableQuantityByDate(productsByName[component.first], offerDate, component.second);
+        }
+
+        int sum = 0;
+        for (auto& comp : composedProductsByName[component.first].quantityByNameNeededProducts) {
+            sum += QuantitySum(composedProductsByName, productsByName, comp, offerDate);
+        }
+        return sum;
+    }
+    float GetAvailableQuantityByDate(string currentProductName, unordered_map<string, ComposedProduct> composedProductsByName, unordered_map<string, Product> productsByName, int* offerDate) {
+        float quantity = 0;
+        for (auto const component : composedProductsByName[currentProductName].quantityByNameNeededProducts) {
+            quantity += QuantitySum(composedProductsByName, productsByName, component, offerDate);
+        }
+        return quantity;
+    }
+
+public:
+    string productName;
+    vector<pair<string, float>> quantityByNameNeededProducts;
+
+    float GetPossibleQuantityToProduce(unordered_map<string, Product> productsByName, unordered_map<string, ComposedProduct> composedProductsByName, int offerDate) {
+        float quantity = 10000000;
+        for (auto& const neededProduct : quantityByNameNeededProducts) {
+            float availableQuantityForProduct = 0;
+            // daca nu e compus 
+            if (composedProductsByName.contains(neededProduct.first)) {
+                availableQuantityForProduct = composedProductsByName[neededProduct.first].GetAvailableQuantityByDate(neededProduct.first, composedProductsByName, productsByName, &offerDate);
+            }
+            else {
+                availableQuantityForProduct = productsByName[neededProduct.first].GetAvailableQuantityByDate(productsByName[neededProduct.first], &offerDate, neededProduct.second); 
+            }
+
+            // pastram cantitatea cea mai mica permisa de unul dintre ingrediente
+            quantity = quantity < (availableQuantityForProduct / neededProduct.second) ? quantity : (availableQuantityForProduct / neededProduct.second);
+        }
+
+        return quantity;
+    }
+};
+
+class Solutions {
+public : 
+    static void A(unordered_map<string, Product> productsByName, vector<Offer> offers) {
+        vector<OfferSatisfied> offersTook;
+        float collectedMoney = 0;
+        
+        vector<pair<int, float>> expiredBatchesForCurrentOffer;
+        float skippedQuantityForCurrentOffer;
+        for (const Offer& currentOffer : offers) {
+            if (!productsByName.contains(currentOffer.productName)) {
+                continue;
+            }
+
+            Product* currentProduct = &productsByName[currentOffer.productName];
+            if (currentProduct->totalQuantity <= 0 || currentOffer.price < currentProduct->productionPrice) {
+                continue;
+            }
+            
+            //  trebuie verificata data de expirare la fiecare lot
+            //      stocam produsele expirate pt comanda respectiva
+            //          cele care se potrivesc, dpdv al datei de expirare, raman in priority_queue si sunt procesate;
+            expiredBatchesForCurrentOffer = vector<pair<int, float>>();
+            skippedQuantityForCurrentOffer = 0;
+            while (!currentProduct->quantityByExpirationDate.empty()) {
+                if (currentProduct->quantityByExpirationDate.top().first <= currentOffer.date) {
+                    expiredBatchesForCurrentOffer.push_back(currentProduct->quantityByExpirationDate.top());
+                    skippedQuantityForCurrentOffer += currentProduct->quantityByExpirationDate.top().second;
+
+                    currentProduct->totalQuantity -= currentProduct->quantityByExpirationDate.top().second;
+                    currentProduct->quantityByExpirationDate.pop();
+                    continue;
+                }
+                break;
+            }
+            if (currentProduct->quantityByExpirationDate.empty())
+            {
+                for (auto& const batch : expiredBatchesForCurrentOffer) {
+                    currentProduct->quantityByExpirationDate.push(batch);
+                    currentProduct->totalQuantity += skippedQuantityForCurrentOffer;
+                }
+                continue;
+            }
+
+            int soldQuantity;
+            if (currentOffer.quantity <= currentProduct->totalQuantity) {
+                // avem cat e nevoie
+                soldQuantity = currentOffer.quantity;
+            }
+            else {
+                // vindem doar cat avem
+                soldQuantity = currentProduct->totalQuantity;
+            }
+            
+            // primim banii.
+            collectedMoney += soldQuantity * currentOffer.price;
+
+            // reducem cantitatea din stoc 
+            currentProduct->totalQuantity -= soldQuantity;
+            if (currentProduct->totalQuantity == 0 ) {
+                if(skippedQuantityForCurrentOffer == 0){
+                    productsByName.erase(currentProduct->productName);
+                }
+            }
+            else {
+                // scoatem din coada de prioritati ce e pe 0;
+                int removedSoldQuantityFromStoc = 0;
+                while (removedSoldQuantityFromStoc !=  soldQuantity) {
+                    if (soldQuantity >= removedSoldQuantityFromStoc + currentProduct->quantityByExpirationDate.top().second) {
+                        // luam tot lotul
+                        removedSoldQuantityFromStoc += currentProduct->quantityByExpirationDate.top().second;
+                        currentProduct->quantityByExpirationDate.pop();
+                    }
+                    else {
+                        // nu luam tot lotul
+                        float tookQuantityFromCurrentBatch = soldQuantity - removedSoldQuantityFromStoc;
+                        removedSoldQuantityFromStoc += tookQuantityFromCurrentBatch;
+                        
+                        // nu putem modifica pair ul din priority queue, il readaugam 
+                        pair<int, float> remainingQuantityInBatch = pair<int, float>(
+                                currentProduct->quantityByExpirationDate.top().first,
+                                currentProduct->quantityByExpirationDate.top().second - tookQuantityFromCurrentBatch);
+                        currentProduct->quantityByExpirationDate.pop();
+                        currentProduct->quantityByExpirationDate.push(remainingQuantityInBatch);
+                    }
+                }
+            
+                if (!expiredBatchesForCurrentOffer.empty()) {
+                    for (auto& const batch : expiredBatchesForCurrentOffer) {
+                        currentProduct->quantityByExpirationDate.push(batch);
+                        currentProduct->totalQuantity += skippedQuantityForCurrentOffer;
+                    }
+                }
+            }
+            offersTook.push_back(OfferSatisfied(currentOffer.productName, soldQuantity));
+        }
+        
+        for (OfferSatisfied offer : offersTook) {
+            cout << offer.productName << " " << offer.quantitySold << endl;
+        }
+        cout << collectedMoney;
+    }
+    static void B(unordered_map<string, Product> productsByName, vector<Offer> offers, unordered_map<string, ComposedProduct> composedProductsByName) {
+        float collectedMoney = 0;
+
+        vector<pair<int, float>> expiredBatchesForCurrentOffer;
+        float skippedQuantityForCurrentOffer;
+        for (const Offer& currentOffer : offers) {
+            if (composedProductsByName.contains(currentOffer.productName)){
+                //este produs compus
+
+                //verificam cantitatea de pe stoc ( fara a lua in considerare data de expirare )
+                float possibleQuantityToProduce = composedProductsByName[currentOffer.productName].GetPossibleQuantityToProduce(
+                     productsByName, composedProductsByName, currentOffer.date);
+                
+                float soldQuantity = possibleQuantityToProduce > currentOffer.quantity ?  currentOffer.quantity : possibleQuantityToProduce;
+                
+                for (auto& const component : composedProductsByName[currentOffer.productName].quantityByNameNeededProducts) {
+                    expiredBatchesForCurrentOffer = vector<pair<int, float>>();
+                    skippedQuantityForCurrentOffer = 0;
+
+                    // verificam daca lot ul din care se doreste consumatia este expirat la data vanzarii
+                    if (productsByName[component.first].quantityByExpirationDate.top().first <= currentOffer.date ) {
+                        //pentru comanda aceasta, scoatem loturile expirate 
+                        expiredBatchesForCurrentOffer.push_back(productsByName[component.first].quantityByExpirationDate.top());
+                        skippedQuantityForCurrentOffer += productsByName[component.first].quantityByExpirationDate.top().second;
+                        productsByName[component.first].quantityByExpirationDate.pop();
+                    }
+                    
+                    productsByName[component.first].totalQuantity -= soldQuantity * component.second;
+                    if (productsByName[component.first].totalQuantity <= 0) {
+                        productsByName.erase(productsByName[component.first].productName);
+                    }
+                    else {
+
+                        int removedSoldQuantityFromStoc = 0;
+                        while (removedSoldQuantityFromStoc != soldQuantity) {
+                            if (soldQuantity >= removedSoldQuantityFromStoc + productsByName[component.first].quantityByExpirationDate.top().second) {
+                                // luam tot lotul
+                                removedSoldQuantityFromStoc += productsByName[component.first].quantityByExpirationDate.top().second;
+                                productsByName[component.first].quantityByExpirationDate.pop();
+                            }
+                            else {
+                                // nu luam tot lotul
+                                float tookQuantityFromCurrentBatch = soldQuantity - removedSoldQuantityFromStoc;
+                                removedSoldQuantityFromStoc += tookQuantityFromCurrentBatch;
+
+                                // nu putem modifica pair ul din priority queue, il readaugam 
+                                pair<int, float> remainingQuantityInBatch = pair<int, float>(
+                                    productsByName[component.first].quantityByExpirationDate.top().first,
+                                    productsByName[component.first].quantityByExpirationDate.top().second - tookQuantityFromCurrentBatch);
+                                productsByName[component.first].quantityByExpirationDate.pop();
+                                productsByName[component.first].quantityByExpirationDate.push(remainingQuantityInBatch);
+                            }
+                        }
+                    }
+
+                    if (!expiredBatchesForCurrentOffer.empty()) {
+                        for (auto& const batch : expiredBatchesForCurrentOffer) {
+                            productsByName[component.first].quantityByExpirationDate.push(batch);
+                            productsByName[component.first].totalQuantity += skippedQuantityForCurrentOffer;
+                        }
+                    }
+                }
+                cout << currentOffer.productName << " " << soldQuantity << endl;
+                collectedMoney += soldQuantity * currentOffer.price;
+
+                continue;
+            }
+            
+            // nu e produs compus, ramane implementarea de la A
+            if (!productsByName.contains(currentOffer.productName)) {
+                continue;
+            }
+
+            Product* currentProduct = &productsByName[currentOffer.productName];
+            if (currentProduct->totalQuantity <= 0 || currentOffer.price < currentProduct->productionPrice) {
+                continue;
+            }
+
+            //  trebuie verificata data de expirare la fiecare lot
+            //      stocam produsele expirate pentru comanda respectiva
+            //          cele care se potrivesc, dpdv al datei de expirare, raman in priority_queue si sunt procesate;
+            expiredBatchesForCurrentOffer = vector<pair<int, float>>();
+            skippedQuantityForCurrentOffer = 0;
+            while (!currentProduct->quantityByExpirationDate.empty()) {
+                if (currentProduct->quantityByExpirationDate.top().first <= currentOffer.date) {
+                    expiredBatchesForCurrentOffer.push_back(currentProduct->quantityByExpirationDate.top());
+                    skippedQuantityForCurrentOffer += currentProduct->quantityByExpirationDate.top().second;
+
+                    currentProduct->totalQuantity -= currentProduct->quantityByExpirationDate.top().second;
+                    currentProduct->quantityByExpirationDate.pop();
+                    continue;
+                }
+                break;
+            }
+            if (currentProduct->quantityByExpirationDate.empty())
+            {
+                for (auto& const batch : expiredBatchesForCurrentOffer) {
+                    currentProduct->quantityByExpirationDate.push(batch);
+                    currentProduct->totalQuantity += skippedQuantityForCurrentOffer;
+                }
+                continue;
+            }
+
+            int soldQuantity;
+            if (currentOffer.quantity <= currentProduct->totalQuantity) {
+                // avem cat e nevoie
+                soldQuantity = currentOffer.quantity;
+            }
+            else {
+                // vindem doar cat avem
+                soldQuantity = currentProduct->totalQuantity;
+            }
+
+            collectedMoney += soldQuantity * currentOffer.price;
+
+            // reducem cantitatea din stoc 
+            currentProduct->totalQuantity -= soldQuantity;
+            if (currentProduct->totalQuantity == 0) {
+                if (skippedQuantityForCurrentOffer == 0) {
+                    productsByName.erase(currentProduct->productName);
+                }
+            }
+            else {
+                // scoatem din coada de prioritati ce e pe 0;
+                int removedSoldQuantityFromStoc = 0;
+                while (removedSoldQuantityFromStoc != soldQuantity) {
+                    if (soldQuantity >= removedSoldQuantityFromStoc + currentProduct->quantityByExpirationDate.top().second) {
+                        // scoatem tot lotul
+                        removedSoldQuantityFromStoc += currentProduct->quantityByExpirationDate.top().second;
+                        currentProduct->quantityByExpirationDate.pop();
+                    }
+                    else {
+                        // nu scoatem tot lotul
+                        float tookQuantityFromCurrentBatch = soldQuantity - removedSoldQuantityFromStoc;
+                        removedSoldQuantityFromStoc += tookQuantityFromCurrentBatch;
+
+                        // nu putem modifica pair ul din priority queue, il readaugam 
+                        pair<int, float> remainingQuantityInBatch = pair<int, float>(
+                            currentProduct->quantityByExpirationDate.top().first,
+                            currentProduct->quantityByExpirationDate.top().second - tookQuantityFromCurrentBatch);
+                        currentProduct->quantityByExpirationDate.pop();
+                        currentProduct->quantityByExpirationDate.push(remainingQuantityInBatch);
                     }
                 }
 
-                if (currentDoctor.remainingTime - currentCase.duration >= 0) {
-                    currentDoctor.remainingTime -= currentCase.duration;
-                    currentDoctor.handeledCases.insert(currentCase);
-                    break;
+                if (!expiredBatchesForCurrentOffer.empty()) {
+                    for (auto& const batch : expiredBatchesForCurrentOffer) {
+                        currentProduct->quantityByExpirationDate.push(batch);
+                        currentProduct->totalQuantity += skippedQuantityForCurrentOffer;
+                    }
                 }
             }
+            cout << currentOffer.productName << " " << soldQuantity << endl;
         }
+        cout << collectedMoney;
     }
 };
 
-class UI {
-public: 
-    void Divider() {
-        cout << endl << "--------------------------------------------" << endl << endl;
-    }
-
-    void DisplayDoctors(unordered_map<string, Doctor>& doctors) {
-        for (auto& currentDoctor : doctors) {
-            if (currentDoctor.second.handeledCases.size() == 0)
-                continue;
-
-            cout << currentDoctor.second.name << " " << currentDoctor.second.handeledCases.size();
-            for (Case currentCase : currentDoctor.second.handeledCases) {
-                cout << " " << currentCase.name << " " << currentCase.arrival_time;
-            }
-            cout << endl;
-        }
-    }
-};
-
-
-
-static string FILE_NAME = "HandsOn-Input.txt";
+static string FILE_NAME = "Input.txt";
 
 int main()
 {
-    FileReader file = FileReader();
-    UI ui = UI();
-    RepartisationAlgorithm algorithm = RepartisationAlgorithm();
+    ifstream inFile(FILE_NAME);
 
-    set<Case> cases;
-    unordered_map<string, Doctor> doctors;
-    unordered_map<string, vector<string>> doctorsBySpecialities;
+    unordered_map<string, Product> productsByName;
+
+    int noStocProducts;
+    inFile >> noStocProducts;
     
-    file.ReadFile(FILE_NAME, cases, doctors, doctorsBySpecialities);
+    string productName;
+    float productionPrice, totalQuantity;
+    pair<int, float> quantityByExpirationDate;
+    for (int i = 0; i < noStocProducts; i++) {
+        totalQuantity = 0;
+        inFile >> productName >> productionPrice >> quantityByExpirationDate.second >> quantityByExpirationDate.first;
+        totalQuantity += quantityByExpirationDate.second;
 
-    ui.Divider();
+        if(productsByName.contains(productName))
+        {
+            productsByName[productName].quantityByExpirationDate.push(quantityByExpirationDate);
+            productsByName[productName].totalQuantity += totalQuantity;
+            continue;
+        }
+        Product currentProduct = Product(productName, productionPrice, totalQuantity);
+        currentProduct.quantityByExpirationDate.push(quantityByExpirationDate);
+        productsByName[productName] = currentProduct;
+    }
 
-    algorithm.AssignCases(cases, doctors, doctorsBySpecialities);
+    int noOffers;
+    inFile >> noOffers;
 
-    ui.DisplayDoctors(doctors);
+    vector<Offer> offers;
+    for (int i = 0; i < noOffers; i++) {
+        int offerDate, offerNoProducts;
+        inFile >> offerDate >> offerNoProducts;
+
+        for (int j = 0; j < offerNoProducts; j++) {
+            Offer currentOffer = Offer();
+            currentOffer.date = offerDate;
+            inFile >> currentOffer.productName >> currentOffer.price >> currentOffer.quantity;
+
+            offers.push_back(currentOffer);
+        }
+    }
+
+
+    unordered_map<string, ComposedProduct> composedProductsByName;
+    int noComposedProducts;
+    inFile >> noComposedProducts;
+
+    ComposedProduct currentProduct;
+    for (int i = 0; i < noComposedProducts; i++) {
+        currentProduct = ComposedProduct();
+        inFile >> currentProduct.productName;
+       
+        int productsNeededForComposedProduct;
+        inFile >> productsNeededForComposedProduct;
+
+        pair<string, float> neededProduct;
+        for (int j = 0; j < productsNeededForComposedProduct; j++) {
+            inFile >> neededProduct.first >> neededProduct.second;
+            currentProduct.quantityByNameNeededProducts.push_back(neededProduct);
+        }
+
+        composedProductsByName[currentProduct.productName] = currentProduct;
+    }
+
+    /*
+        Rezumat :
+
+        A - implementat complet 
+            -> not spaghetti code, pretty clean
+
+        B - implementat pentru produse compuse din produse simple 
+            -> spaghetti code
+    */
+
+    //Solutions::A(productsByName, offers);
+    Solutions::B(productsByName, offers, composedProductsByName);
 
     return 0;
 }

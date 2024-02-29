@@ -1,0 +1,24 @@
+7
+kiwi 7.00 50 15
+cartofi 0.50 100 5
+pepene 2.20 10 10
+cartofi 0.50 20 15
+castraveti 1.70 55 20
+banane 2.90 60 25
+capsuni 5.00 15 27
+5
+3 2
+pepene 2.50 18
+cartofi 0.55 110
+7 2
+kiwi 6.70 5
+pepene 2.70 10
+14 1
+cartofi 1.10 20
+15 2
+kiwi 7.50 45
+castraveti 2.00 56
+23 1
+smoothie 12.00 25
+1
+smoothie 2 banane 2 capsuni 1
