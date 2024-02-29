@@ -89,13 +89,15 @@ public:
             float availableQuantityForProduct = 0;
             // daca nu e compus 
             if (composedProductsByName.contains(neededProduct.first)) {
-                availableQuantityForProduct = composedProductsByName[neededProduct.first].GetAvailableQuantityByDate(neededProduct.first, composedProductsByName, productsByName, &offerDate);
+                quantity += availableQuantityForProduct = composedProductsByName[neededProduct.first].GetAvailableQuantityByDate(neededProduct.first, composedProductsByName, productsByName, &offerDate);
             }
             else {
-                availableQuantityForProduct = productsByName[neededProduct.first].GetAvailableQuantityByDate(productsByName[neededProduct.first], &offerDate);
+                quantity += availableQuantityForProduct = productsByName[neededProduct.first].GetAvailableQuantityByDate(productsByName[neededProduct.first], &offerDate);
             }
 
         }
+
+        return quantity;
     }
 };
 
@@ -372,7 +374,6 @@ int main()
     inFile >> noComposedProducts;
 
     ComposedProduct currentProduct;
-    string productName;
     for (int i = 0; i < noComposedProducts; i++) {
         currentProduct = ComposedProduct();
         inFile >> currentProduct.productName;
