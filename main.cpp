@@ -90,7 +90,7 @@ public:
 
 class Solutions {
 public : 
-    static void A(unordered_map<string, Product> productsByName, vector<Offer> offers) {
+    static void A(unordered_map<string, Product>& productsByName, vector<Offer>& offers) {
         vector<OfferSatisfied> offersTook;
         float collectedMoney = 0;
         
@@ -189,7 +189,7 @@ public :
         }
         cout << collectedMoney;
     }
-    static void B(unordered_map<string, Product> productsByName, vector<Offer> offers, unordered_map<string, ComposedProduct> composedProductsByName) {
+    static void B(unordered_map<string, Product>& productsByName, vector<Offer>& offers, unordered_map<string, ComposedProduct>& composedProductsByName) {
         float collectedMoney = 0;
 
         vector<pair<int, float>> expiredBatchesForCurrentOffer;
@@ -347,87 +347,101 @@ public :
     }
 };
 
+class FileReader {
+public :
+    static void ReadFile(string fileName,
+        unordered_map<string, Product>& productsByName, vector<Offer>& offers, unordered_map<string, ComposedProduct>& composedProductsByName) {
+        ifstream inFile(fileName);
+
+        // ReadProducts
+            int noStocProducts;
+            inFile >> noStocProducts;
+
+            string productName;
+            float productionPrice, totalQuantity;
+            pair<int, float> quantityByExpirationDate;
+            for (int i = 0; i < noStocProducts; i++) {
+                totalQuantity = 0;
+                inFile >> productName >> productionPrice >> quantityByExpirationDate.second >> quantityByExpirationDate.first;
+                totalQuantity += quantityByExpirationDate.second;
+
+                if (productsByName.contains(productName))
+                {
+                    productsByName[productName].quantityByExpirationDate.push(quantityByExpirationDate);
+                    productsByName[productName].totalQuantity += totalQuantity;
+                    continue;
+                }
+                Product currentProduct = Product(productName, productionPrice, totalQuantity);
+                currentProduct.quantityByExpirationDate.push(quantityByExpirationDate);
+                productsByName[productName] = currentProduct;
+            }
+        
+        // ReadOffers
+            int noOffers;
+            inFile >> noOffers;
+
+            for (int i = 0; i < noOffers; i++) {
+                int offerDate, offerNoProducts;
+                inFile >> offerDate >> offerNoProducts;
+
+                for (int j = 0; j < offerNoProducts; j++) {
+                    Offer currentOffer = Offer();
+                    currentOffer.date = offerDate;
+                    inFile >> currentOffer.productName >> currentOffer.price >> currentOffer.quantity;
+
+                    offers.push_back(currentOffer);
+                }
+            }
+        
+
+        // ReadComposedProducts
+            int noComposedProducts;
+            inFile >> noComposedProducts;
+
+            ComposedProduct currentProduct;
+            for (int i = 0; i < noComposedProducts; i++) {
+                currentProduct = ComposedProduct();
+                inFile >> currentProduct.productName;
+
+                int productsNeededForComposedProduct;
+                inFile >> productsNeededForComposedProduct;
+
+                pair<string, float> neededProduct;
+                for (int j = 0; j < productsNeededForComposedProduct; j++) {
+                    inFile >> neededProduct.first >> neededProduct.second;
+                    currentProduct.quantityByNameNeededProducts.push_back(neededProduct);
+                }
+
+                composedProductsByName[currentProduct.productName] = currentProduct;
+            }
+
+        inFile.close();
+    }
+};
+
 static string FILE_NAME = "Input.txt";
 
 int main()
 {
-    ifstream inFile(FILE_NAME);
-
     unordered_map<string, Product> productsByName;
-
-    int noStocProducts;
-    inFile >> noStocProducts;
-    
-    string productName;
-    float productionPrice, totalQuantity;
-    pair<int, float> quantityByExpirationDate;
-    for (int i = 0; i < noStocProducts; i++) {
-        totalQuantity = 0;
-        inFile >> productName >> productionPrice >> quantityByExpirationDate.second >> quantityByExpirationDate.first;
-        totalQuantity += quantityByExpirationDate.second;
-
-        if(productsByName.contains(productName))
-        {
-            productsByName[productName].quantityByExpirationDate.push(quantityByExpirationDate);
-            productsByName[productName].totalQuantity += totalQuantity;
-            continue;
-        }
-        Product currentProduct = Product(productName, productionPrice, totalQuantity);
-        currentProduct.quantityByExpirationDate.push(quantityByExpirationDate);
-        productsByName[productName] = currentProduct;
-    }
-
-    int noOffers;
-    inFile >> noOffers;
-
     vector<Offer> offers;
-    for (int i = 0; i < noOffers; i++) {
-        int offerDate, offerNoProducts;
-        inFile >> offerDate >> offerNoProducts;
-
-        for (int j = 0; j < offerNoProducts; j++) {
-            Offer currentOffer = Offer();
-            currentOffer.date = offerDate;
-            inFile >> currentOffer.productName >> currentOffer.price >> currentOffer.quantity;
-
-            offers.push_back(currentOffer);
-        }
-    }
-
-
     unordered_map<string, ComposedProduct> composedProductsByName;
-    int noComposedProducts;
-    inFile >> noComposedProducts;
+    
+    FileReader::ReadFile(FILE_NAME, productsByName, offers, composedProductsByName);
 
-    ComposedProduct currentProduct;
-    for (int i = 0; i < noComposedProducts; i++) {
-        currentProduct = ComposedProduct();
-        inFile >> currentProduct.productName;
-       
-        int productsNeededForComposedProduct;
-        inFile >> productsNeededForComposedProduct;
-
-        pair<string, float> neededProduct;
-        for (int j = 0; j < productsNeededForComposedProduct; j++) {
-            inFile >> neededProduct.first >> neededProduct.second;
-            currentProduct.quantityByNameNeededProducts.push_back(neededProduct);
-        }
-
-        composedProductsByName[currentProduct.productName] = currentProduct;
-    }
-
-    /*
-        Rezumat :
-
-        A - implementat complet 
-            -> not spaghetti code, pretty clean
-
-        B - implementat pentru produse compuse din produse simple 
-            -> spaghetti code
-    */
 
     //Solutions::A(productsByName, offers);
-    //Solutions::B(productsByName, offers, composedProductsByName);
+    Solutions::B(productsByName, offers, composedProductsByName);
 
+/*
+        Rezumat :
+
+        A - implementat complet
+            -> not spaghetti code, pretty clean
+
+        B - implementat pentru produse compuse din produse simple
+            -> spaghetti code
+*/
     return 0;
 }
+    
