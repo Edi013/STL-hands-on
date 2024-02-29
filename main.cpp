@@ -15,7 +15,6 @@ public:
     string productName;
     float productionPrice;
     int totalQuantity;
-    // expiration date | quantity
     priority_queue <pair<int, float>, vector<pair<int, float>>, greater<pair<int, float>>> quantityByExpirationDate;
 
     float GetAvailableQuantityByDate(Product currentProduct, const int* offerDate, float quantityNeededForOne) {
@@ -27,7 +26,7 @@ public:
             }
             break;
         }
-        return currentProduct.totalQuantity / quantityNeededForOne;
+        return currentProduct.totalQuantity ;
     }
 };
 
@@ -48,7 +47,7 @@ class ComposedProduct {
     float QuantitySum(
         unordered_map<string, ComposedProduct>& composedProductsByName, unordered_map<string, Product>& productsByName, const pair<string, float> component,const int* offerDate ) {
         if (productsByName.contains(component.first)){
-            return productsByName[component.first].GetAvailableQuantityByDate(productsByName[component.first], offerDate, 1);
+            return productsByName[component.first].GetAvailableQuantityByDate(productsByName[component.first], offerDate, component.second);
         }
 
         int sum = 0;
@@ -57,7 +56,6 @@ class ComposedProduct {
         }
         return sum;
     }
-
     float GetAvailableQuantityByDate(string currentProductName, unordered_map<string, ComposedProduct> composedProductsByName, unordered_map<string, Product> productsByName, int* offerDate) {
         float quantity = 0;
         for (auto const component : composedProductsByName[currentProductName].quantityByNameNeededProducts) {
@@ -65,13 +63,13 @@ class ComposedProduct {
         }
         return quantity;
     }
+
 public:
     string productName;
-    // productName | quantity
     vector<pair<string, float>> quantityByNameNeededProducts;
 
     float GetPossibleQuantityToProduce(unordered_map<string, Product> productsByName, unordered_map<string, ComposedProduct> composedProductsByName, int offerDate) {
-        float quantity = 0;
+        float quantity = 10000000;
         for (auto& const neededProduct : quantityByNameNeededProducts) {
             float availableQuantityForProduct = 0;
             // daca nu e compus 
@@ -81,8 +79,9 @@ public:
             else {
                 availableQuantityForProduct = productsByName[neededProduct.first].GetAvailableQuantityByDate(productsByName[neededProduct.first], &offerDate, neededProduct.second); 
             }
-            if (availableQuantityForProduct < productsByName[neededProduct.first].totalQuantity / neededProduct.second)
-                quantity = availableQuantityForProduct;
+
+            // pastram cantitatea cea mai mica permisa de unul dintre ingrediente
+            quantity = quantity < (availableQuantityForProduct / neededProduct.second) ? quantity : (availableQuantityForProduct / neededProduct.second);
         }
 
         return quantity;
@@ -417,13 +416,14 @@ int main()
         composedProductsByName[currentProduct.productName] = currentProduct;
     }
 
-    //Solutions solutions = Solutions();
-
     /*
         Rezumat :
 
-        A - implementat complet, clean code, scris frumos;
-        B - implementat pentru produse compuse din produse simple, spaghetti code.
+        A - implementat complet 
+            -> not spaghetti code, pretty clean
+
+        B - implementat pentru produse compuse din produse simple 
+            -> spaghetti code
     */
 
     //Solutions::A(productsByName, offers);
