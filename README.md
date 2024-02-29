@@ -1,3 +1,6 @@
+# It ended up very well - 2024.02.28-29 : 
+![STL_Contest Netrom  ](https://github.com/Edi013/STL-hands-on/assets/87914375/3b401245-898b-4122-ab1c-ca2aa769971c)
+
 # STL-hands-on
 STL Hands-On boilerplate project
 
